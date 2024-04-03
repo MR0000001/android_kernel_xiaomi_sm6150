@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2017-2020, The Linux foundation. All rights reserved.
+ * Copyright (C) 2021 XiaoMi, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -117,7 +118,7 @@
 #define UART_CORE2X_VOTE	(5000)
 #define UART_CONSOLE_CORE2X_VOTE (960)
 
-#define WAKEBYTE_TIMEOUT_MSEC	(2000)
+#define WAKEBYTE_TIMEOUT_MSEC	(100)
 #define WAIT_XFER_MAX_ITER	(2)
 #define WAIT_XFER_MAX_TIMEOUT_US	(10000)
 #define WAIT_XFER_MIN_TIMEOUT_US	(9000)
@@ -2043,6 +2044,11 @@ static void msm_geni_serial_handle_isr(struct uart_port *uport,
 
 			if ((dma_tx_status & TX_DMA_DONE) && !m_cmd_done)
 				msm_geni_serial_handle_dma_tx(uport);
+			if (dma_tx_status & (TX_RESET_DONE |
+						TX_GENI_CANCEL_IRQ))
+				m_cmd_done = true;
+			if (m_irq_status & (M_CMD_CANCEL_EN | M_CMD_ABORT_EN))
+				m_cmd_done = true;
 		}
 
 		if (dma_rx_status) {
@@ -2937,10 +2943,22 @@ OF_EARLYCON_DECLARE(msm_geni_serial, "qcom,msm-geni-console",
 
 static int console_register(struct uart_driver *drv)
 {
+#ifdef CONFIG_FASTBOOT_CMD_CTRL_UART
+        if (!is_early_cons_enabled) {
+                pr_info("ignore console register\n");
+                return 0;
+        }
+#endif
 	return uart_register_driver(drv);
 }
 static void console_unregister(struct uart_driver *drv)
 {
+#ifdef CONFIG_FASTBOOT_CMD_CTRL_UART
+        if (!is_early_cons_enabled) {
+                pr_info("ignore console unregister\n");
+                return;
+        }
+#endif
 	uart_unregister_driver(drv);
 }
 
@@ -3179,6 +3197,16 @@ static int msm_geni_serial_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "%s: No matching device found", __func__);
 		return -ENODEV;
 	}
+
+#ifdef CONFIG_FASTBOOT_CMD_CTRL_UART
+  /*if earlycon is not enabled, we should ignore console
+    driver prob*/
+  if (!is_early_cons_enabled &&
+      (!strcmp(id->compatible, "qcom,msm-geni-console"))) {
+    pr_info("ignore cons prob\n");
+    return -ENODEV;
+  }
+#endif
 
 	if (pdev->dev.of_node) {
 		if (drv->cons) {
@@ -3541,7 +3569,7 @@ exit_runtime_resume:
 	return ret;
 }
 
-static int msm_geni_serial_sys_suspend_noirq(struct device *dev)
+static int msm_geni_serial_sys_suspend(struct device *dev)
 {
 	struct platform_device *pdev = to_platform_device(dev);
 	struct msm_geni_serial_port *port = platform_get_drvdata(pdev);
@@ -3570,7 +3598,7 @@ static int msm_geni_serial_sys_suspend_noirq(struct device *dev)
 	return 0;
 }
 
-static int msm_geni_serial_sys_resume_noirq(struct device *dev)
+static int msm_geni_serial_sys_resume(struct device *dev)
 {
 	struct platform_device *pdev = to_platform_device(dev);
 	struct msm_geni_serial_port *port = platform_get_drvdata(pdev);
@@ -3622,12 +3650,12 @@ static int msm_geni_serial_runtime_resume(struct device *dev)
 	return 0;
 }
 
-static int msm_geni_serial_sys_suspend_noirq(struct device *dev)
+static int msm_geni_serial_sys_suspend(struct device *dev)
 {
 	return 0;
 }
 
-static int msm_geni_serial_sys_resume_noirq(struct device *dev)
+static int msm_geni_serial_sys_resume(struct device *dev)
 {
 	return 0;
 }
@@ -3641,9 +3669,9 @@ static int msm_geni_serial_sys_hib_resume_noirq(struct device *dev)
 static const struct dev_pm_ops msm_geni_serial_pm_ops = {
 	.runtime_suspend = msm_geni_serial_runtime_suspend,
 	.runtime_resume = msm_geni_serial_runtime_resume,
-	.suspend_noirq = msm_geni_serial_sys_suspend_noirq,
-	.resume_noirq = msm_geni_serial_sys_resume_noirq,
-	.freeze = msm_geni_serial_sys_suspend_noirq,
+	.suspend_noirq = msm_geni_serial_sys_suspend,
+	.resume_noirq = msm_geni_serial_sys_resume,
+	.freeze = msm_geni_serial_sys_suspend,
 	.restore = msm_geni_serial_sys_hib_resume_noirq,
 	.thaw = msm_geni_serial_sys_hib_resume_noirq,
 };
@@ -3659,8 +3687,8 @@ static void msm_geni_serial_ssr_down(struct device *dev)
 	port->uart_ssr.is_ssr_down = true;
 	ret = pm_runtime_force_suspend(uport->dev);
 	if (ret) {
-		dev_err(uport->dev, "%s:force suspend failed %d\n", __func__,
-			ret);
+		dev_err(uport->dev, "%s:force suspend failed %d\n",
+						ret, __func__);
 		goto exit;
 	}
 

@@ -1,4 +1,5 @@
-/* Copyright (c) 2016-2019, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2016-2018, The Linux Foundation. All rights reserved.
+ * Copyright (C) 2021 XiaoMi, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -21,15 +22,11 @@
 struct cam_req_mgr_trigger_notify;
 struct cam_req_mgr_error_notify;
 struct cam_req_mgr_add_request;
-#ifdef CONFIG_SPECTRA_CAMERA_UPGRADE
-struct cam_req_mgr_notify_stop;
-#endif
 struct cam_req_mgr_device_info;
 struct cam_req_mgr_core_dev_link_setup;
 struct cam_req_mgr_apply_request;
 struct cam_req_mgr_flush_request;
 struct cam_req_mgr_link_evt_data;
-struct cam_req_mgr_dump_info;
 
 #define SKIP_NEXT_FRAME 0x100
 
@@ -46,9 +43,6 @@ typedef int (*cam_req_mgr_notify_trigger)(
 	struct cam_req_mgr_trigger_notify *);
 typedef int (*cam_req_mgr_notify_err)(struct cam_req_mgr_error_notify *);
 typedef int (*cam_req_mgr_add_req)(struct cam_req_mgr_add_request *);
-#ifdef CONFIG_SPECTRA_CAMERA_UPGRADE
-typedef int (*cam_req_mgr_notify_stop)(struct cam_req_mgr_notify_stop *);
-#endif
 
 /**
  * @brief: cam req mgr to camera device drivers
@@ -59,7 +53,6 @@ typedef int (*cam_req_mgr_notify_stop)(struct cam_req_mgr_notify_stop *);
  * @cam_req_mgr_apply_req   : CRM asks device to apply certain request id.
  * @cam_req_mgr_flush_req   : Flush or cancel request
  * cam_req_mgr_process_evt  : generic events
- * cam_req_mgr_dump_req     : dump request
  */
 typedef int (*cam_req_mgr_get_dev_info) (struct cam_req_mgr_device_info *);
 typedef int (*cam_req_mgr_link_setup)(
@@ -67,7 +60,6 @@ typedef int (*cam_req_mgr_link_setup)(
 typedef int (*cam_req_mgr_apply_req)(struct cam_req_mgr_apply_request *);
 typedef int (*cam_req_mgr_flush_req)(struct cam_req_mgr_flush_request *);
 typedef int (*cam_req_mgr_process_evt)(struct cam_req_mgr_link_evt_data *);
-typedef int (*cam_req_mgr_dump_req)(struct cam_req_mgr_dump_info *);
 
 /**
  * @brief          : cam_req_mgr_crm_cb - func table
@@ -75,15 +67,11 @@ typedef int (*cam_req_mgr_dump_req)(struct cam_req_mgr_dump_info *);
  * @notify_trigger : payload for trigger indication event
  * @notify_err     : payload for different error occurred at device
  * @add_req        : payload to inform which device and what request is received
- * @notify_stop    : payload to inform stop event
  */
 struct cam_req_mgr_crm_cb {
 	cam_req_mgr_notify_trigger  notify_trigger;
 	cam_req_mgr_notify_err      notify_err;
 	cam_req_mgr_add_req         add_req;
-#ifdef CONFIG_SPECTRA_CAMERA_UPGRADE
-	cam_req_mgr_notify_stop     notify_stop;
-#endif
 };
 
 /**
@@ -94,7 +82,6 @@ struct cam_req_mgr_crm_cb {
  * @apply_req    : payload to apply request id on a device linked
  * @flush_req    : payload to flush request
  * @process_evt  : payload to generic event
- * @dump_req     : payload to dump request
  */
 struct cam_req_mgr_kmd_ops {
 	cam_req_mgr_get_dev_info     get_dev_info;
@@ -102,7 +89,6 @@ struct cam_req_mgr_kmd_ops {
 	cam_req_mgr_apply_req        apply_req;
 	cam_req_mgr_flush_req        flush_req;
 	cam_req_mgr_process_evt      process_evt;
-	cam_req_mgr_dump_req         dump_req;
 };
 
 /**
@@ -161,9 +147,6 @@ enum cam_req_mgr_device_error {
 	CRM_KMD_ERR_PAGE_FAULT,
 	CRM_KMD_ERR_OVERFLOW,
 	CRM_KMD_ERR_TIMEOUT,
-#ifdef CONFIG_SPECTRA_CAMERA_UPGRADE
-	CRM_KMD_ERR_STOPPED,
-#endif
 	CRM_KMD_ERR_MAX,
 };
 
@@ -219,16 +202,12 @@ enum cam_req_mgr_link_evt_type {
  * @frame_id : frame id for internal tracking
  * @trigger  : trigger point of this notification, CRM will send apply
  * only to the devices which subscribe to this point.
- * @sof_timestamp_val: Captured time stamp value at sof hw event
- * @req_id   : req id which returned buf_done
  */
 struct cam_req_mgr_trigger_notify {
 	int32_t  link_hdl;
 	int32_t  dev_hdl;
 	int64_t  frame_id;
 	uint32_t trigger;
-	uint64_t sof_timestamp_val;
-	uint64_t req_id;
 };
 
 /**
@@ -261,16 +240,6 @@ struct cam_req_mgr_add_request {
 	uint32_t skip_before_applying;
 };
 
-#ifdef CONFIG_SPECTRA_CAMERA_UPGRADE
-/**
- * struct cam_req_mgr_notify_stop
- * @link_hdl             : link identifier
- *
- */
-struct cam_req_mgr_notify_stop {
-	int32_t  link_hdl;
-};
-#endif
 
 /* CRM to KMD devices */
 /**
@@ -368,25 +337,4 @@ struct cam_req_mgr_send_request {
 	int32_t    link_hdl;
 	struct cam_req_mgr_req_queue *in_q;
 };
-
-/**
- * struct cam_req_mgr_dump_info
- * @req_id      : request id to cancel
- * @link_hdl    : link identifier
- * @dev_hdl     : device handle for cross check
- * @buf_handle  : buf handle
- * @offset      : offset of buffere
- * @error_type  : error type
- *
- */
-struct cam_req_mgr_dump_info {
-	uint64_t    req_id;
-	int32_t     link_hdl;
-	int32_t     dev_hdl;
-	uint32_t    buf_handle;
-	int32_t     offset;
-	int32_t     error_type;
-};
-
-
 #endif

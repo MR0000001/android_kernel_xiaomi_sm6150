@@ -23,13 +23,9 @@ quiet_cmd_ihex2fw  = IHEX2FW $@
 quiet_cmd_h16tofw  = H16TOFW $@
       cmd_h16tofw  = $(objtree)/$(obj)/ihex2fw -w $< $@
 
-fw-shipped-$(CONFIG_TOUCHSCREEN_ST_FTS_V521) += st_fts_f4.ftb st_fts_f4l.ftb
-
 fw-shipped-$(CONFIG_TOUCHSCREEN_GOODIX_GTX8) += goodix_gt9886_cfg_f10.bin goodix_gt9886_fw_f10.bin
-
-fw-shipped-$(CONFIG_TOUCHSCREEN_NT36xxx_HOSTDL_SPI) += novatek_nt36672c_g7b_fw01.bin novatek_nt36672c_g7b_mp01.bin
-fw-shipped-$(CONFIG_TOUCHSCREEN_NT36xxx_HOSTDL_SPI) += novatek_nt36672c_g7b_fw02.bin novatek_nt36672c_g7b_mp02.bin
-fw-shipped-$(CONFIG_TOUCHSCREEN_NT36xxx_HOSTDL_SPI) += novatek_ts_fw.bin
+fw-shipped-$(CONFIG_TOUCHSCREEN_GOODIX_GTX9886_F4) += goodix_gt9886_cfg_f4.bin goodix_gt9886_fw_f4.bin
+fw-shipped-$(CONFIG_TOUCHSCREEN_ST_FTS_V521) += st_fts_f4.ftb st_fts_f4l.ftb
 
 fw-shipped-$(CONFIG_TOUCHSCREEN_GOODIX_GTX9896_I2C) += goodix_gt9896_cfg.bin goodix_gt9896_fw.bin
 
@@ -42,6 +38,7 @@ quiet_cmd_ihex2fw  = IHEX2FW $@
 
 quiet_cmd_h16tofw  = H16TOFW $@
       cmd_h16tofw  = $(objtree)/$(obj)/ihex2fw -w $< $@
+
 
 quiet_cmd_fwbin = MK_FW   $@
       cmd_fwbin = FWNAME="$(patsubst firmware/%.gen.S,%,$@)";		     \
@@ -93,7 +90,7 @@ $(obj)/%: $(obj)/%.ihex
 # Don't depend on ihex2fw if we're installing and it already exists.
 # Putting it after | in the dependencies doesn't seem sufficient when
 # we're installing after a cross-compile, because ihex2fw has dependencies
-# on stuff like /usr/lib/gcc/ppc64-redhat-linux/4.3.0/include/stddef.h and
+# on stuff like /usr/lib/gcc/ppc64-redhat-linux/4.3.0/include/stddef.h and 
 # thus wants to be rebuilt. Which it can't be, if the prebuilt kernel tree
 # is exported read-only for someone to run 'make install'.
 ifeq ($(INSTALL):$(wildcard $(obj)/ihex2fw),install:$(obj)/ihex2fw)

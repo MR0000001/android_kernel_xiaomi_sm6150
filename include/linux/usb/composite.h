@@ -520,7 +520,6 @@ struct usb_composite_dev {
 	u8				next_string_id;
 	char				*def_manufacturer;
 	bool                    isMSOS;
-
 	/* the gadget driver won't enable the data pullup
 	 * while the deactivation count is nonzero.
 	 */

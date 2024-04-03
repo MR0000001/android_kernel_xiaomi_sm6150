@@ -1,11 +1,14 @@
 menu "Techpack audio options"
 
-config SND_SOC_TAS2563
-	tristate "SND_SOC_TAS2563"
-config TAS2563_CODEC
-	tristate "TAS2653_CODEC"
-config TAS2563_MISC
-	tristate "TAS2653_MISC"
-config TAS2563_REGMAP
-	tristate "TAS2653_REGMAP"
+config SND_SOC_AWINIC_AW882XX
+	tristate "SND_SOC_AWINIC_AW882XX"
+
+config SND_SOC_FOR_ULTRASOUND_PATH
+	tristate "SND_SOC_FOR_ULTRASOUND_PATH"
+
+config SND_SOC_TFA9874_FOR_DAVI
+	tristate "SND_SOC_TFA9874_FOR_DAVI"
+
+config TFA_NON_DSP_SOLUTION
+	tristate"TFA_NON_DSP_SOLUTION"
 endmenu

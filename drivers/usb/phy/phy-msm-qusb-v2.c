@@ -161,7 +161,6 @@ struct qusb_phy {
 	int			efuse_pll_bias_seq_host_len;
 	int			*override_tune1_seq_host;
 	int			override_tune1_seq_host_len;
-
 	/* override TUNEX registers value */
 	struct dentry		*root;
 	u8			tune[5];
@@ -995,7 +994,7 @@ static int qusb_phy_create_debugfs(struct qusb_phy *qphy)
 
 	qphy->root = debugfs_create_dir(dev_name(qphy->phy.dev), NULL);
 	if (IS_ERR_OR_NULL(qphy->root)) {
-		dev_err(qphy->phy.dev,
+		dev_dbg(qphy->phy.dev,
 			"can't create debugfs root for %s\n",
 					dev_name(qphy->phy.dev));
 		ret = -ENOMEM;
@@ -1233,7 +1232,6 @@ static int qusb_phy_probe(struct platform_device *pdev)
 
 	qphy->emulation = of_property_read_bool(dev->of_node,
 					"qcom,emulation");
-
 	size = 0;
 	of_get_property(dev->of_node, "qcom,emu-init-seq", &size);
 	if (size) {

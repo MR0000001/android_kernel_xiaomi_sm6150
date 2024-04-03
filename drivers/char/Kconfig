@@ -651,7 +651,7 @@ config RANDOM_TRUST_CPU
 	  Say Y here unless you have reason to mistrust your CPU or believe
 	  its RNG facilities may be faulty. This may also be configured at
 	  boot time with "random.trust_cpu=on/off".
-
+    
 config RANDOM_TRUST_BOOTLOADER
 	bool "Initialize RNG using bootloader-supplied seed"
 	default y
@@ -670,6 +670,10 @@ config RANDOM_TRUST_BOOTLOADER
 	  believe its RNG facilities may be faulty. This may also be configured
 	  at boot time with "random.trust_bootloader=on/off".
 
+config XLOGCHAR
+	tristate "xlogchar driver"
+	help
+	  Implements a high performance log driver
 endmenu
 
 config OKL4_PIPE

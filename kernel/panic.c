@@ -28,10 +28,10 @@
 #include <linux/console.h>
 #include <linux/bug.h>
 #include <linux/ratelimit.h>
-#include <linux/sysfs.h>
 #define CREATE_TRACE_POINTS
 #include <trace/events/exception.h>
 #include <soc/qcom/minidump.h>
+#include <linux/sysfs.h>
 
 #define PANIC_TIMER_STEP 100
 #define PANIC_BLINK_SPD 18
@@ -205,8 +205,6 @@ void panic(const char *fmt, ...)
 		 */
 		panic_on_warn = 0;
 	}
-
-	trace_kernel_panic(0);
 
 	/*
 	 * Disable local interrupts. This will prevent panic_smp_self_stop

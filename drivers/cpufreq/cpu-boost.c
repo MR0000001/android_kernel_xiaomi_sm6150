@@ -22,6 +22,11 @@
 #include <linux/slab.h>
 #include <linux/input.h>
 #include <linux/time.h>
+#include <linux/battery_saver.h>
+
+#include <uapi/linux/sched/types.h>
+
+#include <linux/sched/rt.h>
 
 struct cpu_sync {
 	int cpu;
@@ -164,10 +169,14 @@ static void update_policy_online(void)
 	put_online_cpus();
 }
 
+extern int kp_active_mode(void);
 static void do_input_boost_rem(struct work_struct *work)
 {
 	unsigned int i, ret;
 	struct cpu_sync *i_sync_info;
+
+	if (kp_active_mode() == 1)
+	    return;
 
 	/* Reset the input_boost_min for all CPUs in the system */
 	pr_debug("Resetting input boost min for all CPUs\n");
@@ -226,7 +235,7 @@ static void cpuboost_input_event(struct input_handle *handle,
 {
 	u64 now;
 
-	if (!input_boost_enabled)
+	if (!input_boost_enabled || is_battery_saver_on())
 		return;
 
 	now = ktime_to_us(ktime_get());

@@ -116,6 +116,7 @@ enum print_reason {
 /* use for QC3P5 */
 #define QC3P5_VOTER			"QC3P5_VOTER"
 #define FCC_MAX_QC3P5_VOTER		"FCC_MAX_QC3P5_VOTER"
+#define BATT_LN8000_VOTER 		"BATT_LN8000_VOTER"
 
 #define BOOST_BACK_STORM_COUNT	3
 #define WEAK_CHG_STORM_COUNT	8
@@ -632,12 +633,12 @@ struct smb_charger {
 	struct delayed_work	role_reversal_check;
 	struct delayed_work	pr_swap_detach_work;
 	struct delayed_work	pr_lock_clear_work;
-	struct delayed_work	micro_usb_switch_work;
 	struct delayed_work	reg_work;
 	struct delayed_work	six_pin_batt_step_chg_work;
 	struct delayed_work	reduce_fcc_work;
-	struct delayed_work	status_report_work;
+	struct delayed_work     status_report_work;
 	struct delayed_work	thermal_setting_work;
+	struct delayed_work	micro_usb_switch_work;
 
 	struct alarm		lpd_recheck_timer;
 	struct alarm		moisture_protection_alarm;

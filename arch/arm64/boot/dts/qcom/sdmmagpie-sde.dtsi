@@ -1,4 +1,5 @@
 /* Copyright (c) 2018-2019, The Linux Foundation. All rights reserved.
+ * Copyright (C) 2021 XiaoMi, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -34,7 +35,7 @@
 		clock-names = "gcc_iface", "gcc_bus", "gcc_nrt_bus",
 				"iface_clk", "core_clk", "vsync_clk",
 				"lut_clk", "rot_clk";
-		clock-rate = <0 0 0 0 300000000 19200000 200000000
+		clock-rate = <0 0 0 0 344000000 19200000 200000000
 					200000000>;
 		clock-max-rate = <0 0 0 0 430000000 19200000 430000000
 					430000000>;
@@ -203,6 +204,8 @@
 		qcom,sde-reg-dma-trigger-off = <0x119c>;
 
 		qcom,sde-secure-sid-mask = <0x4400801>;
+		qcom,sde-num-mnoc-ports = <2>;
+		qcom,sde-axi-bus-width = <32>;
 
 		qcom,sde-sspp-vig-blocks {
 			qcom,sde-vig-csc-off = <0x1a00>;
@@ -405,6 +408,7 @@
 		compatible = "qcom,dsi-ctrl-hw-v2.3";
 		label = "dsi-ctrl-0";
 		cell-index = <0>;
+		frame-threshold-time-us = <800>;
 		reg =   <0xae94000 0x400>,
 			<0xaf08000 0x4>;
 		reg-names = "dsi_ctrl", "disp_cc_base";
@@ -454,6 +458,7 @@
 		compatible = "qcom,dsi-ctrl-hw-v2.3";
 		label = "dsi-ctrl-1";
 		cell-index = <1>;
+		frame-threshold-time-us = <800>;
 		reg =   <0xae96000 0x400>,
 			<0xaf08000 0x4>;
 		reg-names = "dsi_ctrl", "disp_cc_base";
@@ -551,6 +556,7 @@
 						00 00 00 00
 						00 00 00 80];
 		qcom,platform-regulator-settings = [1d 1d 1d 1d 1d];
+		qcom,panel-allow-phy-poweroff;
 		qcom,phy-supply-entries {
 			#address-cells = <1>;
 			#size-cells = <0>;

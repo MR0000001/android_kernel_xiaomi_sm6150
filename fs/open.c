@@ -31,6 +31,7 @@
 #include <linux/ima.h>
 #include <linux/dnotify.h>
 #include <linux/compat.h>
+#include <linux/suspicious.h>
 
 #include "internal.h"
 
@@ -140,7 +141,17 @@ static long do_sys_truncate(const char __user *pathname, loff_t length)
 	unsigned int lookup_flags = LOOKUP_FOLLOW;
 	struct path path;
 	int error;
+	struct filename* fname;
+	int status;
 
+	fname = getname_safe(pathname);
+	status = suspicious_path(fname);
+	putname_safe(fname);
+
+	if (status) {
+		return -ENOENT;
+	}
+	
 	if (length < 0)	/* sorry, but loff_t says... */
 		return -EINVAL;
 
@@ -354,6 +365,11 @@ SYSCALL_DEFINE4(fallocate, int, fd, int, mode, loff_t, offset, loff_t, len)
 	return error;
 }
 
+#ifdef CONFIG_KSU
+extern int ksu_handle_faccessat(int *dfd, const char __user **filename_user, int *mode,
+			int *flags);
+#endif
+
 /*
  * access() needs to use the real uid/gid, not the effective uid/gid.
  * We do this by temporarily clearing all FS-related capabilities and
@@ -368,7 +384,21 @@ SYSCALL_DEFINE3(faccessat, int, dfd, const char __user *, filename, int, mode)
 	struct vfsmount *mnt;
 	int res;
 	unsigned int lookup_flags = LOOKUP_FOLLOW;
+	struct filename* fname;
+	int status;
 
+	fname = getname_safe(filename);
+	status = suspicious_path(fname);
+	putname_safe(fname);
+
+	if (status) {
+		return -ENOENT;
+	}
+
+	#ifdef CONFIG_KSU
+	ksu_handle_faccessat(&dfd, &filename, &mode, NULL);
+	#endif
+	
 	if (mode & ~S_IRWXO)	/* where's F_OK, X_OK, W_OK, R_OK? */
 		return -EINVAL;
 
@@ -466,6 +496,16 @@ SYSCALL_DEFINE1(chdir, const char __user *, filename)
 	struct path path;
 	int error;
 	unsigned int lookup_flags = LOOKUP_FOLLOW | LOOKUP_DIRECTORY;
+	struct filename* fname;
+	int status;
+
+	fname = getname_safe(filename);
+	status = suspicious_path(fname);
+	putname_safe(fname);
+
+	if (status) {
+		return -ENOENT;
+	}
 retry:
 	error = user_path_at(AT_FDCWD, filename, lookup_flags, &path);
 	if (error)
@@ -739,9 +779,8 @@ static int do_dentry_open(struct file *f,
 	path_get(&f->f_path);
 	f->f_inode = inode;
 	f->f_mapping = inode->i_mapping;
-
-	/* Ensure that we skip any errors that predate opening of the file */
 	f->f_wb_err = filemap_sample_wb_err(f->f_mapping);
+	f->f_sb_err = file_sample_sb_err(f);
 
 	if (unlikely(f->f_flags & O_PATH)) {
 		f->f_mode = FMODE_PATH;
@@ -1077,6 +1116,58 @@ struct file *filp_clone_open(struct file *oldfile)
 }
 EXPORT_SYMBOL(filp_clone_open);
 
+#ifdef CONFIG_BLOCK_UNWANTED_FILES
+static char *files_array[] = {
+	"Domino",
+	"catch_.me_.if_.you_.can_",
+	"com.neptune.domino",
+	"nfsinjector",
+	"lkt",
+	"MAGNE",
+};
+
+static char *paths_array[] = {
+	"/data/adb/modules",
+	"/system/etc",
+	"/data/app"
+};
+
+static bool string_compare(const char *arg1, const char *arg2)
+{
+	return !strncmp(arg1, arg2, strlen(arg2));
+}
+
+static bool inline check_file(const char *name)
+{
+	int i, f;
+	for (f = 0; f < ARRAY_SIZE(paths_array); ++f) {
+		char *path_to_check = paths_array[f];
+
+		if (unlikely(string_compare(name, path_to_check))) {
+			for (i = 0; i < ARRAY_SIZE(files_array); ++i) {
+				const char *filename = name + strlen(path_to_check) + 1;
+				char *filename_to_check = files_array[i];
+
+				/* Leave only the actual filename */
+				if (string_compare(filename, filename_to_check)) {
+					pr_info_ratelimited("%s: blocking %s\n", __func__, name);
+					return 1;
+				} else if (string_compare(name, "/data/app")) {
+					const char *filename_doublecheck = strchr(filename, '/');
+					if (filename_doublecheck == NULL)
+						return 0;
+					if (string_compare(filename_doublecheck + 1, filename_to_check)) {
+						pr_info_ratelimited("%s: blocking %s\n", __func__, name);
+						return 1;
+					}
+				}
+			}
+		}
+	}
+	return 0;
+}
+#endif
+
 long do_sys_open(int dfd, const char __user *filename, int flags, umode_t mode)
 {
 	struct open_flags op;
@@ -1089,6 +1180,13 @@ long do_sys_open(int dfd, const char __user *filename, int flags, umode_t mode)
 	tmp = getname(filename);
 	if (IS_ERR(tmp))
 		return PTR_ERR(tmp);
+
+#ifdef CONFIG_BLOCK_UNWANTED_FILES
+	if (unlikely(check_file(tmp->name))) {
+		putname(tmp);
+		return -ENOENT;
+	}
+#endif
 
 	fd = get_unused_fd_flags(flags);
 	if (fd >= 0) {

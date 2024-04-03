@@ -570,15 +570,6 @@ config ICNSS
 	  control messages to FW over QMI channel. It is also responsible for
 	  handling WLAN PD restart notifications.
 
-config ICNSS_DEBUG
-	bool "ICNSS debug support"
-	depends on ICNSS
-	---help---
-	  Say 'Y' here to enable ICNSS driver debug support. Debug support
-	  primarily consists of logs consisting of information related to
-	  hardware register access and enabling BUG_ON for certain cases to aid
-	  the debugging.
-
 config ICNSS_QMI
        bool "ICNSS QMI support"
        depends on ICNSS
@@ -760,7 +751,6 @@ config QCOM_QDSS_BRIDGE
 
 config QTI_RPM_STATS_LOG
 	bool "Qualcomm Technologies RPM Stats Driver"
-	depends on DEBUG_FS
 	default n
 	help
 	  This option enables a driver which reads RPM messages from a shared
@@ -803,7 +793,7 @@ config MSM_AVTIMER
 
 config MSM_PM
 	depends on PM
-	select MSM_IDLE_STATS if DEBUG_FS
+	select MSM_IDLE_STATS
 	select CPU_IDLE_MULTIPLE_DRIVERS
 	bool "Qualcomm Techonolgies Inc (QTI) platform specific PM driver"
 	help
@@ -1095,6 +1085,12 @@ config QCOM_HYP_CORE_CTL
 	  CPUs can be assigned to the other guest OS by the hypervisor.
 	  An offline CPU is considered as a reserved CPU since this OS can't use
 	  it.
+
+config DEBUG_POLICY_STATUS
+	bool "read debug policy status and update command line"
+	help
+	  This driver read debug policy status using Qualcomm scm_call2 interface
+	  and then update cmdline
 
 config RENAME_BLOCK_DEVICE
 	bool "Rename block device node in /dev"
