@@ -5,7 +5,7 @@
 # A mix between the arm64 and arm vDSO Makefiles.
 
 ifeq ($(cc-name),clang)
-  CC_ARM32 := $(CC) --target=arm-linux-gnueabi
+  CC_ARM32 := $(CC) $(CLANG_TARGET_ARM32) $(CLANG_GCC32_TC) $(CLANG_PREFIX32)
 else
   CC_ARM32 := $(CROSS_COMPILE_COMPAT)$(cc-name)
 endif
@@ -71,7 +71,7 @@ VDSO_CFLAGS += -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs \
                -fno-strict-aliasing -fno-common \
                -Werror-implicit-function-declaration \
                -Wno-format-security \
-               -std=gnu89
+               -std=gnu99
 VDSO_CFLAGS  += -O3
 # Some useful compiler-dependent flags from top-level Makefile
 VDSO_CFLAGS += $(call cc32-option,-Wdeclaration-after-statement,)

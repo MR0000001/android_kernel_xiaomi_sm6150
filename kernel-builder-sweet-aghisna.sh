@@ -24,19 +24,8 @@ fi
 
 # DEFCONFIG
 DEFCONFIG=sweet_defconfig
-VENDEFCONFIG=sweet_user_defconfig
+VENDEFCONFIG=sweet_defconfig
 
-# Playground clang
-NOTHAVECLANG=1
-CLANG_DIR="clang"
-REALCLANG_DIR="$(pwd)"/${CLANG_DIR}
-if [ "$NOTHAVECLANG" == "1" ]; then
-	echo "Cloning Playground clang from PixelOS Repository..."
-	git clone --depth=1 -b 17 https://gitlab.com/PixelOS-Devices/playgroundtc.git $CLANG_DIR &>> $REALLOGGER
-fi
-echo "Setting up proper permissions to clang and export it to PATH..."
-sudo chmod 755 -R $REALCLANG_DIR &>> $REALLOGGER
-export PATH="$REALCLANG_DIR/bin:$PATH"
 
 # Variables
 export KBUILD_BUILD_USER="$USER"
@@ -69,7 +58,7 @@ if [ "$KSU" == "1" ]; then
 	ln -sf ../KernelSU/kernel kernelsu &>> $REALLOGGER
 	cd ..
 	sed -i '/endmenu/i source "drivers/kernelsu/Kconfig"' drivers/Kconfig
-	sed -i 's/# CONFIG_KSU is not set/CONFIG_KSU=y/g' arch/arm64/configs/vendor/$VENDEFCONFIG
+	sed -i 's/# CONFIG_KSU is not set/CONFIG_KSU=y/g' arch/arm64/configs/$VENDEFCONFIG
 else
 	echo "KernelSU support is disabled, skipping..."
 	rm -rf KernelSU &>> $REALLOGGER
@@ -77,31 +66,31 @@ else
 	rm -rf kernelsu &>> $REALLOGGER
 	cd ..
 	sed -i '/source "drivers\/kernelsu\/Kconfig"/d' drivers/Kconfig
-	sed -i 's/CONFIG_KSU=y/# CONFIG_KSU is not set/g' arch/arm64/configs/vendor/$VENDEFCONFIG
+	sed -i 's/CONFIG_KSU=y/# CONFIG_KSU is not set/g' arch/arm64/configs/$VENDEFCONFIG
 fi
 
 # LN8000 Toggles
 LN8K=1
 if [ "$LN8K" == "1" ]; then
 	echo "Enabling LN8000 support..."
-	sed -i 's/# CONFIG_CHARGER_LN8000 is not set/CONFIG_CHARGER_LN8000=y/g' arch/arm64/configs/vendor/$VENDEFCONFIG
+	sed -i 's/# CONFIG_CHARGER_LN8000 is not set/CONFIG_CHARGER_LN8000=y/g' arch/arm64/configs/$VENDEFCONFIG
 else
 	echo "Disabling LN8000 support..."
-	sed -i 's/CONFIG_CHARGER_LN8000=y/# CONFIG_CHARGER_LN8000 is not set/g' arch/arm64/configs/vendor/$VENDEFCONFIG
+	sed -i 's/CONFIG_CHARGER_LN8000=y/# CONFIG_CHARGER_LN8000 is not set/g' arch/arm64/configs/$VENDEFCONFIG
 fi
 
 # LTO Toggles
 LTO=0
 if [ "$LTO" == "1" ]; then
 	echo "Enabling LTO support... (Requires min. 32GB of RAM)"
-	sed -i 's/# CONFIG_LTO is not set/CONFIG_LTO=y/g' arch/arm64/configs/vendor/$VENDEFCONFIG
-	sed -i 's/# CONFIG_LTO_CLANG is not set/CONFIG_LTO_CLANG=y/g' arch/arm64/configs/vendor/$VENDEFCONFIG
-	sed -i 's/CONFIG_LTO_NONE=y/# CONFIG_LTO_NONE is not set/g' arch/arm64/configs/vendor/$VENDEFCONFIG
+	sed -i 's/# CONFIG_LTO is not set/CONFIG_LTO=y/g' arch/arm64/configs/$VENDEFCONFIG
+	sed -i 's/# CONFIG_LTO_CLANG is not set/CONFIG_LTO_CLANG=y/g' arch/arm64/configs/$VENDEFCONFIG
+	sed -i 's/CONFIG_LTO_NONE=y/# CONFIG_LTO_NONE is not set/g' arch/arm64/configs/$VENDEFCONFIG
 else
 	echo "Disabling LTO support..."
-	sed -i 's/CONFIG_LTO=y/# CONFIG_LTO is not set/g' arch/arm64/configs/vendor/$VENDEFCONFIG
-	sed -i 's/CONFIG_LTO_CLANG=y/# CONFIG_LTO_CLANG is not set/g' arch/arm64/configs/vendor/$VENDEFCONFIG
-	sed -i 's/# CONFIG_LTO_NONE is not set/CONFIG_LTO_NONE=y/g' arch/arm64/configs/vendor/$VENDEFCONFIG
+	sed -i 's/CONFIG_LTO=y/# CONFIG_LTO is not set/g' arch/arm64/configs/$VENDEFCONFIG
+	sed -i 's/CONFIG_LTO_CLANG=y/# CONFIG_LTO_CLANG is not set/g' arch/arm64/configs/$VENDEFCONFIG
+	sed -i 's/# CONFIG_LTO_NONE is not set/CONFIG_LTO_NONE=y/g' arch/arm64/configs/$VENDEFCONFIG
 fi
 
 # Cleanup

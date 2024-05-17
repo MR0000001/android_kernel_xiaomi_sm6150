@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: GPL-2.0
 VERSION = 4
 PATCHLEVEL = 14
-SUBLEVEL = 327
+SUBLEVEL = 325
 EXTRAVERSION =
 NAME = Petit Gorille
 
@@ -382,8 +382,7 @@ HOSTLDFLAGS  := $(HOST_LFS_LDFLAGS)
 HOST_LOADLIBES := $(HOST_LFS_LIBS)
 
 ifeq ($(shell $(HOSTCC) -v 2>&1 | grep -c "clang version"), 1)
-HOSTCFLAGS  += -Wno-unused-value -Wno-unused-parameter \
-		-Wno-missing-field-initializers
+HOSTCFLAGS  += -Wno-missing-field-initializers
 endif
 
 # Make variables (CC, etc...)
@@ -421,7 +420,7 @@ CHECKFLAGS     := -D__linux__ -Dlinux -D__STDC__ -Dunix -D__unix__ \
 NOSTDINC_FLAGS  =
 CFLAGS_MODULE   =
 AFLAGS_MODULE   =
-LDFLAGS_MODULE  =
+LDFLAGS_MODULE  = --strip-debug
 CFLAGS_KERNEL	=
 AFLAGS_KERNEL	=
 LDFLAGS_vmlinux =
@@ -523,15 +522,11 @@ CLANG_FLAGS	+= --target=$(notdir $(CLANG_TRIPLE:%-=%))
 ifeq ($(shell $(srctree)/scripts/clang-android.sh $(CC) $(CLANG_FLAGS)), y)
 $(error "Clang with Android --target detected. Did you specify CLANG_TRIPLE?")
 endif
-GCC_TOOLCHAIN_DIR := $(dir $(shell which $(CROSS_COMPILE)elfedit))
-CLANG_FLAGS	+= --prefix=$(GCC_TOOLCHAIN_DIR)$(notdir $(CROSS_COMPILE))
-GCC_TOOLCHAIN	:= $(realpath $(GCC_TOOLCHAIN_DIR)/..)
-endif
-ifneq ($(GCC_TOOLCHAIN),)
-CLANG_FLAGS	+= --gcc-toolchain=$(GCC_TOOLCHAIN)
 endif
 ifneq ($(LLVM_IAS),1)
 CLANG_FLAGS	+= -no-integrated-as
+GCC_TOOLCHAIN_DIR := $(dir $(shell which $(CROSS_COMPILE)elfedit))
+CLANG_FLAGS	+= --prefix=$(GCC_TOOLCHAIN_DIR)$(notdir $(CROSS_COMPILE))
 endif
 CLANG_FLAGS	+= -Werror=unknown-warning-option
 CLANG_FLAGS	+= $(call cc-option, -Wno-misleading-indentation)
@@ -708,10 +703,6 @@ endif
 LLVM_AR		:= llvm-ar
 LLVM_NM		:= llvm-nm
 export LLVM_AR LLVM_NM
-
-# Set O3 optimization level for LTO
-LDFLAGS		+= --plugin-opt=O3
-
 endif
 
 # The arch Makefile can set ARCH_{CPP,A,C}FLAGS to override the default
@@ -733,16 +724,6 @@ ifdef CONFIG_CC_OPTIMIZE_FOR_SIZE
 KBUILD_CFLAGS   += -Os
 else
 KBUILD_CFLAGS   += -O3
-ifeq ($(cc-name),gcc)
-KBUILD_CFLAGS	+= -mcpu=cortex-a76.cortex-a55 -mtune=cortex-a76.cortex-a55
-endif
-ifeq ($(cc-name),clang)
-KBUILD_CFLAGS	+= -mcpu=cortex-a55+crypto -mtune=cortex-a55
-endif
-endif
-
-ifdef CONFIG_CC_WERROR
-KBUILD_CFLAGS  += -Werror
 
 ifdef CONFIG_LLVM_POLLY
 KBUILD_CFLAGS	+= -mllvm -polly \
@@ -754,13 +735,6 @@ KBUILD_CFLAGS	+= -mllvm -polly \
 		   -mllvm -polly-invariant-load-hoisting
 endif
 endif
-
-ifdef CONFIG_MINIMAL_TRACING_FOR_IORAP
-KBUILD_CFLAGS   += -DNOTRACE
-endif
-
-# Tell compiler to use pipes instead of temporary files during compilation
-KBUILD_CFLAGS += $(call cc-option, -pipe)
 
 # Tell gcc to never replace conditional load with a non-conditional one
 KBUILD_CFLAGS	+= $(call cc-option,--param=allow-store-data-races=0)
@@ -820,8 +794,6 @@ KBUILD_CFLAGS += $(call cc-option, -Wno-undefined-optimized)
 KBUILD_CFLAGS += $(call cc-option, -Wno-tautological-constant-out-of-range-compare)
 KBUILD_CFLAGS += $(call cc-option, -mllvm -disable-struct-const-merge)
 KBUILD_CFLAGS += $(call cc-option, -Wno-sometimes-uninitialized)
-KBUILD_CFLAGS += $(call cc-option, -Wno-pointer-to-int-cast)
-KBUILD_CFLAGS += $(call cc-option, -Wno-void-pointer-to-int-cast)
 
 # Quiet clang warning: comparison of unsigned expression < 0 is always false
 
@@ -839,7 +811,7 @@ KBUILD_CFLAGS += $(call cc-option,-fno-delete-null-pointer-checks,)
 KBUILD_CFLAGS += $(call cc-disable-warning, unused-but-set-variable)
 
 ifeq ($(ld-name),lld)
-LDFLAGS += --lto-O3
+LDFLAGS += -O2
 endif
 
 KBUILD_CFLAGS += $(call cc-disable-warning, unused-const-variable)
@@ -939,6 +911,12 @@ lto-clang-flags	:= -flto
 endif
 lto-clang-flags += -fvisibility=default $(call cc-option, -fsplit-lto-unit)
 
+# Limit inlining across translation units to reduce binary size
+LD_FLAGS_LTO_CLANG := -mllvm -import-instr-limit=5
+
+KBUILD_LDFLAGS += $(LD_FLAGS_LTO_CLANG)
+KBUILD_LDFLAGS_MODULE += $(LD_FLAGS_LTO_CLANG)
+
 KBUILD_LDFLAGS_MODULE += -T scripts/module-lto.lds
 
 # allow disabling only clang LTO where needed
@@ -1001,11 +979,6 @@ KBUILD_CFLAGS += $(call cc-disable-warning,-Wdeclaration-after-statement,)
 # disable pointer signed / unsigned warnings in gcc 4.0
 KBUILD_CFLAGS += $(call cc-disable-warning, pointer-sign)
 
-# disable non hazardous warnings in gcc
-KBUILD_CFLAGS += $(call cc-disable-warning, format)
-
-KBUILD_CFLAGS += $(call cc-disable-warning, unused-variable)
-
 # disable stringop warnings in gcc 8+
 KBUILD_CFLAGS += $(call cc-disable-warning, stringop-truncation)
 
@@ -1021,7 +994,7 @@ KBUILD_CFLAGS += $(call cc-disable-warning, restrict)
 KBUILD_CFLAGS += $(call cc-disable-warning, maybe-uninitialized)
 
 # disable invalid "can't wrap" optimizations for signed / pointers
-KBUILD_CFLAGS	+= $(call cc-option,-fno-strict-overflow)
+KBUILD_CFLAGS	+= -fno-strict-overflow
 
 # clang sets -fmerge-all-constants by default as optimization, but this
 # is non-conforming behavior for C and in fact breaks the kernel, so we
@@ -1035,6 +1008,9 @@ KBUILD_CFLAGS	+= $(call cc-option,-fmerge-constants)
 # Make sure -fstack-check isn't enabled (like gentoo apparently did)
 KBUILD_CFLAGS  += $(call cc-option,-fno-stack-check,)
 
+# conserve stack if available
+KBUILD_CFLAGS   += $(call cc-option,-fconserve-stack)
+
 # disallow errors like 'EXPORT_GPL(foo);' with missing header
 KBUILD_CFLAGS   += $(call cc-option,-Werror=implicit-int)
 
@@ -1042,7 +1018,7 @@ KBUILD_CFLAGS   += $(call cc-option,-Werror=implicit-int)
 KBUILD_CFLAGS   += $(call cc-option,-Werror=strict-prototypes)
 
 # Prohibit date/time macros, which would make the build non-deterministic
-KBUILD_CFLAGS   += $(call cc-option,-Werror=date-time)
+KBUILD_CFLAGS   += -Werror=date-time
 
 # enforce correct pointer usage
 KBUILD_CFLAGS   += $(call cc-option,-Werror=incompatible-pointer-types)
@@ -1066,10 +1042,8 @@ KBUILD_CPPFLAGS += $(ARCH_CPPFLAGS) $(KCPPFLAGS)
 KBUILD_AFLAGS   += $(ARCH_AFLAGS)   $(KAFLAGS)
 KBUILD_CFLAGS   += $(ARCH_CFLAGS)   $(KCFLAGS)
 
-# Use --build-id when available.
-LDFLAGS_BUILD_ID := $(call ld-option, --build-id)
-KBUILD_LDFLAGS_MODULE += $(LDFLAGS_BUILD_ID)
-LDFLAGS_vmlinux += $(LDFLAGS_BUILD_ID)
+KBUILD_LDFLAGS_MODULE += --build-id
+LDFLAGS_vmlinux += --build-id
 
 ifdef CONFIG_LD_DEAD_CODE_DATA_ELIMINATION
 LDFLAGS_vmlinux	+= $(call ld-option, --gc-sections,)
@@ -1155,7 +1129,6 @@ INITRD_COMPRESS-$(CONFIG_RD_LZMA)  := lzma
 INITRD_COMPRESS-$(CONFIG_RD_XZ)    := xz
 INITRD_COMPRESS-$(CONFIG_RD_LZO)   := lzo
 INITRD_COMPRESS-$(CONFIG_RD_LZ4)   := lz4
-INITRD_COMPRESS-$(CONFIG_RD_ZSTD)  := zstd
 # do not export INITRD_COMPRESS, since we didn't actually
 # choose a sane default compression above.
 # export INITRD_COMPRESS := $(INITRD_COMPRESS-y)
@@ -1401,12 +1374,17 @@ endif
 # needs to be updated, so this check is forced on all builds
 
 uts_len := 64
+ifneq (,$(BUILD_NUMBER))
+	UTS_RELEASE=$(KERNELRELEASE)-ab$(BUILD_NUMBER)
+else
+	UTS_RELEASE=$(KERNELRELEASE)
+endif
 define filechk_utsrelease.h
-	if [ `echo -n "$(KERNELRELEASE)" | wc -c ` -gt $(uts_len) ]; then \
-	  echo '"$(KERNELRELEASE)" exceeds $(uts_len) characters' >&2;    \
-	  exit 1;                                                         \
-	fi;                                                               \
-	(echo \#define UTS_RELEASE \"$(KERNELRELEASE)\";)
+	if [ `echo -n "$(UTS_RELEASE)" | wc -c ` -gt $(uts_len) ]; then \
+		echo '"$(UTS_RELEASE)" exceeds $(uts_len) characters' >&2;    \
+		exit 1;                                                       \
+	fi;                                                             \
+	(echo \#define UTS_RELEASE \"$(UTS_RELEASE)\";)
 endef
 
 define filechk_version.h
